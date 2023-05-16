@@ -22,6 +22,8 @@ public class Tile : MonoBehaviour
         new (1,1),
     };
 
+    private readonly string _increaseTxt = Enum.GetName(typeof(ChangeTypes.Types), ChangeTypes.Types.Increase);
+    private readonly string _decreaseTxt = Enum.GetName(typeof(ChangeTypes.Types), ChangeTypes.Types.Decrease);
     private string holeTag = Enum.GetName(typeof(TileTypes.Types), TileTypes.Types.Hole);
     private string dynamiteTag = Enum.GetName(typeof(TileTypes.Types), TileTypes.Types.Dynamite);
 
@@ -101,14 +103,18 @@ public class Tile : MonoBehaviour
     {
         if (gameObject.CompareTag(holeTag) )
         {
+            _mapGenerator.ChangeTnTCounter(_increaseTxt);
+            
             _mapGenerator.InstantiateDynamite(position);
             
             DestroyTile(position,holeTag);
             
             return;
         }
-        
+
         if (!gameObject.CompareTag(dynamiteTag)) return;
+        
+        _mapGenerator.ChangeTnTCounter(_decreaseTxt);
         
         _mapGenerator.InstantiateHole(position);
             

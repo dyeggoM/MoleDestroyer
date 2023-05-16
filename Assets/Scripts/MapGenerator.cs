@@ -17,9 +17,15 @@ public class MapGenerator : MonoBehaviour
     [SerializeField] private GameObject mainCamera;
     [SerializeField] [Range(2,50)] private int mapSize = 10;
     [SerializeField] [Range(1,100)] private int moles = 10;
-
-    [SerializeField] private ButtonHide redoButton;
     
+    [SerializeField] private TextMeshProUGUI molesText;
+    [SerializeField] private TextMeshProUGUI tntText;
+
+    private readonly string _increaseTxt = Enum.GetName(typeof(ChangeTypes.Types), ChangeTypes.Types.Increase);
+    private readonly string _decreaseTxt = Enum.GetName(typeof(ChangeTypes.Types), ChangeTypes.Types.Decrease);
+    
+    private LevelManager _levelManager;
+    private SaveProgress _saveProgress;
     private List<Vector3> _molePosition;
     private List<Vector3> _moleNeighbors;
     private List<Vector3> _grass;
@@ -28,15 +34,28 @@ public class MapGenerator : MonoBehaviour
     private int _buttonSelection;
     private int _seed = 0;
     private bool _isMoleSelected = false;
+    private int _tntCounter = 0;
+    private DifficultyTypes.Types _difficulty;
+
+    private void Awake()
+    {
+        _levelManager = FindObjectOfType<LevelManager>();
+        _saveProgress = FindObjectOfType<SaveProgress>();
+        // _saveProgress.LoadData();
+    }
 
     void Start()
     {
+        _seed = _saveProgress.GetCurrentLevel();
+        _difficulty = _saveProgress.GetCurrentDifficulty();
+        
         InitializeVariables();
         GenerateMapData();
     }
 
     void InitializeVariables()
     {
+        _tntCounter = 0;
         Random.InitState(_seed);
         _buttonSelection = (int) TileTypes.Types.Grass;
         _isMoleSelected = false;
@@ -57,6 +76,7 @@ public class MapGenerator : MonoBehaviour
 
     void CleanData()
     {
+        _tntCounter = 0;
         Random.InitState(_seed);
         _buttonSelection = (int) TileTypes.Types.Grass;
         _isMoleSelected = false;
@@ -68,6 +88,9 @@ public class MapGenerator : MonoBehaviour
     
     void GenerateMapData()
     {
+        Progress progress = new Progress(_seed, _difficulty, true);
+        _saveProgress.AddProgress(progress);
+        
         GenerateMoles();
         CleanNeighbors();
         
@@ -75,11 +98,15 @@ public class MapGenerator : MonoBehaviour
         CleanGrass();
         
         CenterCamera();
+        
+        _levelManager.ChangeLevelText($"{_seed}");
     }
-
     
     void GenerateMoles()
     {
+        molesText.text = $"{moles}";
+        tntText.text = $"{_tntCounter}";
+        
         int maxMoles = mapSize * mapSize - 1;
         if (moles > maxMoles)
             moles = maxMoles;
@@ -165,7 +192,13 @@ public class MapGenerator : MonoBehaviour
     
     void CenterCamera()
     {
-        Vector3 center = new Vector3(mapSize/2f,mapSize/2f,-30f);
+        //TODO: Organizar el centrado en el mapa
+        // float halfMapSize = mapSize / 2f;
+        // int width = Screen.width;
+        // int height = Screen.height;
+        // int test = width - mapSize;
+        
+        Vector3 center = new Vector3(4.5f,2,-10f);
         mainCamera.transform.position = center;
     }
 
@@ -224,31 +257,6 @@ public class MapGenerator : MonoBehaviour
         return _buttonSelection;
     }
 
-    public void ChangeLevel(string direction)
-    {
-        switch (direction)
-        {
-            case "Next":
-            {
-                if(_seed<int.MaxValue)
-                    _seed++;
-                break;
-            }
-            case "Previous":
-            {
-                if(_seed>int.MinValue)
-                    _seed--;
-                break;
-            }
-        }
-
-        redoButton.SetButtonActive(false);
-        
-        CleanMap();
-        
-        GenerateMapData();
-    }
-
     public Tile GetTileByPosition(Vector3 position)
     {
         return gameObject.GetComponentsInChildren<Tile>().FirstOrDefault(t=>t.transform.position == position);
@@ -257,7 +265,6 @@ public class MapGenerator : MonoBehaviour
     {
         return _grass;
     }
-    
     public List<Vector3> GetNumbers()
     {
         return _moleNeighbors;
@@ -278,7 +285,34 @@ public class MapGenerator : MonoBehaviour
 
     public bool HasMoleBeenSelected()
     {
-        redoButton.SetButtonActive(_isMoleSelected);
+        _levelManager.ActivateRedoButton(_isMoleSelected);
         return _isMoleSelected;
     }
+
+    public void ChangeLevelSeed(int seed)
+    {
+        _seed = seed;
+        
+        CleanMap();
+        
+        GenerateMapData();
+        
+        _saveProgress.SaveData();
+    }
+
+    public int GetSeed()
+    {
+        return _seed;
+    }
+
+    public void ChangeTnTCounter(string change)
+    {
+        if (change == _increaseTxt && _tntCounter <= mapSize*mapSize)
+            _tntCounter++;
+        else if (change == _decreaseTxt && _tntCounter >= 0 )
+            _tntCounter--;
+        tntText.text = $"{_tntCounter}";
+    }
+    
+    
 }
